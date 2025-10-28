@@ -4,11 +4,26 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Calendar, Clock, Shield, Star, Route } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import heroImage from "@/assets/hero-cab.jpg";
 
 const Hero = () => {
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleBooking = () => {
+    if (!user) {
+      toast.error('Please sign in to book a cab');
+      navigate('/auth');
+      return;
+    }
+    // TODO: Navigate to booking page or submit booking
+    toast.success('Booking feature coming soon!');
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -115,10 +130,11 @@ const Hero = () => {
 
                 {/* Book Now Button */}
                 <Button 
-                  size="lg" 
+                  size="lg"
+                  onClick={handleBooking}
                   className="w-full mt-6 bg-gradient-primary hover:shadow-glow transition-all duration-300 font-semibold text-lg py-6"
                 >
-                  Book Now - Get Instant Quote
+                  {user ? 'Book Now - Get Instant Quote' : 'Sign In to Book'}
                 </Button>
 
                 {/* Quick Info */}

@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Phone, MapPin, Clock } from "lucide-react";
+import { Menu, Phone, MapPin, Clock, LogOut, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const navItems = [
     { name: "Home", href: "#home" },
@@ -49,7 +53,25 @@ const Header = () => {
               <Phone className="h-4 w-4" />
               <span>+91 98765 43210</span>
             </div>
-            <Button variant="hero">Book Now</Button>
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">{user.email}</span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Sign Out</span>
+                </Button>
+              </>
+            ) : (
+              <Button variant="hero" onClick={() => navigate('/auth')}>Sign In</Button>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -97,9 +119,27 @@ const Header = () => {
                     <Clock className="h-5 w-5 text-secondary" />
                     <span>24/7 Available</span>
                   </div>
-                  <Button variant="hero" size="lg" className="w-full mt-4">
-                    Book Your Ride
-                  </Button>
+                  {user ? (
+                    <>
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10">
+                        <User className="h-5 w-5 text-primary" />
+                        <span className="text-sm font-medium">{user.email}</span>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="lg"
+                        onClick={() => signOut()}
+                        className="w-full flex items-center justify-center gap-2"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Sign Out</span>
+                      </Button>
+                    </>
+                  ) : (
+                    <Button variant="hero" size="lg" className="w-full mt-4" onClick={() => navigate('/auth')}>
+                      Sign In
+                    </Button>
+                  )}
                 </div>
               </div>
             </SheetContent>
