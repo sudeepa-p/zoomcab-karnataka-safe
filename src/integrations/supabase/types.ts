@@ -137,6 +137,30 @@ export type Database = {
           },
         ]
       }
+      routes: {
+        Row: {
+          created_at: string | null
+          distance_km: number
+          from_location: string
+          id: string
+          to_location: string
+        }
+        Insert: {
+          created_at?: string | null
+          distance_km: number
+          from_location: string
+          id?: string
+          to_location: string
+        }
+        Update: {
+          created_at?: string | null
+          distance_km?: number
+          from_location?: string
+          id?: string
+          to_location?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string | null

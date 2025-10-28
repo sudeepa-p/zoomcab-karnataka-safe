@@ -21,8 +21,7 @@ const Hero = () => {
       navigate('/auth');
       return;
     }
-    // TODO: Navigate to booking page or submit booking
-    toast.success('Booking feature coming soon!');
+    navigate('/booking');
   };
 
   return (

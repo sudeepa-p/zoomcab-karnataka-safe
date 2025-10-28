@@ -55,6 +55,9 @@ const Header = () => {
             </div>
             {user ? (
               <>
+                <Button variant="ghost" onClick={() => navigate('/bookings')}>
+                  My Bookings
+                </Button>
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10">
                   <User className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">{user.email}</span>
@@ -121,6 +124,12 @@ const Header = () => {
                   </div>
                   {user ? (
                     <>
+                      <Button variant="ghost" className="w-full" onClick={() => {
+                        navigate('/bookings');
+                        setIsOpen(false);
+                      }}>
+                        My Bookings
+                      </Button>
                       <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10">
                         <User className="h-5 w-5 text-primary" />
                         <span className="text-sm font-medium">{user.email}</span>
