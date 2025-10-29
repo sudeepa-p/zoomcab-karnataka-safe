@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          available_seats: number | null
           created_at: string | null
           driver_name: string | null
           driver_phone: string | null
@@ -23,13 +24,19 @@ export type Database = {
           dropoff_location: string
           estimated_distance: number | null
           estimated_fare: number | null
+          fare_per_person: number | null
           id: string
+          is_primary_booking: boolean | null
+          is_shared_ride: boolean | null
+          parent_booking_id: string | null
           passenger_count: number
           passenger_name: string
           passenger_phone: string
           pickup_date: string
           pickup_location: string
           pickup_time: string
+          route_segment_end: string | null
+          route_segment_start: string | null
           special_requests: string | null
           status: string | null
           updated_at: string | null
@@ -37,6 +44,7 @@ export type Database = {
           vehicle_id: string
         }
         Insert: {
+          available_seats?: number | null
           created_at?: string | null
           driver_name?: string | null
           driver_phone?: string | null
@@ -44,13 +52,19 @@ export type Database = {
           dropoff_location: string
           estimated_distance?: number | null
           estimated_fare?: number | null
+          fare_per_person?: number | null
           id?: string
+          is_primary_booking?: boolean | null
+          is_shared_ride?: boolean | null
+          parent_booking_id?: string | null
           passenger_count: number
           passenger_name: string
           passenger_phone: string
           pickup_date: string
           pickup_location: string
           pickup_time: string
+          route_segment_end?: string | null
+          route_segment_start?: string | null
           special_requests?: string | null
           status?: string | null
           updated_at?: string | null
@@ -58,6 +72,7 @@ export type Database = {
           vehicle_id: string
         }
         Update: {
+          available_seats?: number | null
           created_at?: string | null
           driver_name?: string | null
           driver_phone?: string | null
@@ -65,13 +80,19 @@ export type Database = {
           dropoff_location?: string
           estimated_distance?: number | null
           estimated_fare?: number | null
+          fare_per_person?: number | null
           id?: string
+          is_primary_booking?: boolean | null
+          is_shared_ride?: boolean | null
+          parent_booking_id?: string | null
           passenger_count?: number
           passenger_name?: string
           passenger_phone?: string
           pickup_date?: string
           pickup_location?: string
           pickup_time?: string
+          route_segment_end?: string | null
+          route_segment_start?: string | null
           special_requests?: string | null
           status?: string | null
           updated_at?: string | null
@@ -79,6 +100,13 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_parent_booking_id_fkey"
+            columns: ["parent_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_user_id_fkey"
             columns: ["user_id"]
@@ -169,6 +197,51 @@ export type Database = {
           to_location?: string
         }
         Relationships: []
+      }
+      shared_ride_participants: {
+        Row: {
+          created_at: string | null
+          dropoff_location: string
+          fare_amount: number
+          id: string
+          participant_booking_id: string
+          pickup_location: string
+          primary_booking_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dropoff_location: string
+          fare_amount: number
+          id?: string
+          participant_booking_id: string
+          pickup_location: string
+          primary_booking_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dropoff_location?: string
+          fare_amount?: number
+          id?: string
+          participant_booking_id?: string
+          pickup_location?: string
+          primary_booking_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_ride_participants_participant_booking_id_fkey"
+            columns: ["participant_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_ride_participants_primary_booking_id_fkey"
+            columns: ["primary_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {

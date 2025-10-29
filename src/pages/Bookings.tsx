@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Car, CreditCard, Clock, CheckCircle, Truck, Navigation, MapPinned, User, Phone } from "lucide-react";
+import { Calendar, MapPin, Car, Clock, CheckCircle, Truck, Navigation, MapPinned, User, Phone, Share2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 interface Booking {
@@ -19,10 +19,16 @@ interface Booking {
   estimated_fare: number;
   passenger_name: string;
   passenger_phone: string;
+  passenger_count: number;
   created_at: string;
   driver_name: string | null;
   driver_phone: string | null;
   driver_vehicle_number: string | null;
+  is_shared_ride: boolean;
+  is_primary_booking: boolean;
+  parent_booking_id: string | null;
+  available_seats: number;
+  fare_per_person: number | null;
   vehicles: {
     name: string;
     vehicle_type: string;
@@ -32,6 +38,23 @@ interface Booking {
     status: string;
     payment_method: string;
   }>;
+  participants?: Array<{
+    id: string;
+    pickup_location: string;
+    dropoff_location: string;
+    fare_amount: number;
+    bookings: {
+      passenger_name: string;
+      passenger_count: number;
+      pickup_location: string;
+      dropoff_location: string;
+    };
+  }>;
+  primary_booking?: {
+    pickup_location: string;
+    dropoff_location: string;
+    passenger_name: string;
+  };
 }
 
 const Bookings = () => {
@@ -46,55 +69,89 @@ const Bookings = () => {
       return;
     }
     loadBookings();
+
+    // Subscribe to booking updates for both primary and shared bookings
+    const channel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          loadBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, navigate]);
 
   const loadBookings = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          vehicles (name, vehicle_type),
-          payments (amount, status, payment_method)
-        `)
-        .order('created_at', { ascending: false });
+    setLoading(true);
+    
+    // Load user's own bookings
+    const { data, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        vehicles(name, vehicle_type),
+        payments(amount, status, payment_method)
+      `)
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setBookings(data || []);
-      
-      // Set up real-time subscription for status updates
-      const channel = supabase
-        .channel('bookings-realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'bookings',
-            filter: `user_id=eq.${user?.id}`
-          },
-          (payload) => {
-            setBookings(prev => 
-              prev.map(booking => 
-                booking.id === payload.new.id 
-                  ? { ...booking, ...payload.new }
-                  : booking
-              )
-            );
-            toast.success('Booking status updated!');
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (error: any) {
-      console.error('Error loading bookings:', error);
+    if (error) {
       toast.error('Failed to load bookings');
-    } finally {
+      console.error(error);
       setLoading(false);
+      return;
     }
+
+    // For each booking, check if it's a shared ride and load participants
+    const bookingsWithParticipants = await Promise.all(
+      (data || []).map(async (booking) => {
+        if (booking.is_shared_ride && booking.is_primary_booking) {
+          const { data: participants } = await supabase
+            .from('shared_ride_participants')
+            .select(`
+              id,
+              pickup_location,
+              dropoff_location,
+              fare_amount,
+              bookings!shared_ride_participants_participant_booking_id_fkey(
+                passenger_name,
+                passenger_count,
+                pickup_location,
+                dropoff_location
+              )
+            `)
+            .eq('primary_booking_id', booking.id);
+          
+          return { ...booking, participants: participants || [] };
+        }
+        
+        // If this is a participant booking, get the primary booking info
+        if (booking.parent_booking_id) {
+          const { data: primaryBooking } = await supabase
+            .from('bookings')
+            .select('pickup_location, dropoff_location, passenger_name')
+            .eq('id', booking.parent_booking_id)
+            .single();
+          
+          return { ...booking, primary_booking: primaryBooking };
+        }
+        
+        return { ...booking, participants: [] };
+      })
+    );
+
+    setBookings(bookingsWithParticipants);
+    setLoading(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -165,7 +222,19 @@ const Bookings = () => {
               <Card key={booking.id}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {getStatusIcon(booking.status)}
+                        <Badge className={getStatusColor(booking.status)}>
+                          {formatStatus(booking.status)}
+                        </Badge>
+                        {booking.is_shared_ride && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Share2 className="h-3 w-3" />
+                            {booking.is_primary_booking ? 'Shared Ride (Host)' : 'Shared Ride'}
+                          </Badge>
+                        )}
+                      </div>
                       <CardTitle className="text-xl mb-2">
                         {booking.pickup_location} → {booking.dropoff_location}
                       </CardTitle>
@@ -173,12 +242,6 @@ const Bookings = () => {
                         <Car className="h-4 w-4" />
                         <span>{booking.vehicles.name}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(booking.status)}
-                      <Badge className={getStatusColor(booking.status)}>
-                        {formatStatus(booking.status)}
-                      </Badge>
                     </div>
                   </div>
                 </CardHeader>
@@ -198,6 +261,10 @@ const Bookings = () => {
                         <span>{booking.estimated_distance} km</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>{booking.passenger_count} passenger(s)</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
                         <User className="h-4 w-4 text-muted-foreground" />
                         <span>{booking.passenger_name}</span>
                       </div>
@@ -205,6 +272,37 @@ const Bookings = () => {
                         <Phone className="h-4 w-4 text-muted-foreground" />
                         <span>{booking.passenger_phone}</span>
                       </div>
+
+                      {/* Show shared ride participants if this is a primary booking */}
+                      {booking.is_shared_ride && booking.is_primary_booking && booking.participants && booking.participants.length > 0 && (
+                        <div className="mt-3 p-3 bg-primary/5 rounded-lg">
+                          <p className="font-semibold mb-2 flex items-center gap-2 text-sm">
+                            <Share2 className="h-4 w-4" />
+                            Co-Passengers ({booking.participants.length}):
+                          </p>
+                          {booking.participants.map((p: any, idx: number) => (
+                            <div key={idx} className="text-xs ml-6 mb-1">
+                              • {p.bookings?.passenger_name} ({p.bookings?.passenger_count}) - {p.bookings?.pickup_location} to {p.bookings?.dropoff_location}
+                            </div>
+                          ))}
+                          <div className="text-xs text-muted-foreground mt-2">
+                            Available seats: {booking.available_seats}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show primary booking info if this is a participant */}
+                      {booking.parent_booking_id && booking.primary_booking && (
+                        <div className="mt-3 p-3 bg-secondary/50 rounded-lg">
+                          <p className="font-semibold mb-1 flex items-center gap-2 text-xs">
+                            <Share2 className="h-3 w-3" />
+                            Ride hosted by: {booking.primary_booking.passenger_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Full route: {booking.primary_booking.pickup_location} → {booking.primary_booking.dropoff_location}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="space-y-3">
@@ -228,11 +326,18 @@ const Bookings = () => {
                       
                       <div className="pt-4 border-t">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Total Fare</span>
+                          <span className="text-sm text-muted-foreground">
+                            {booking.is_shared_ride ? 'Your Share' : 'Total Fare'}
+                          </span>
                           <span className="text-3xl font-bold text-primary">
                             ₹{Number(booking.estimated_fare).toFixed(0)}
                           </span>
                         </div>
+                        {booking.is_shared_ride && booking.fare_per_person && (
+                          <p className="text-xs text-muted-foreground mt-1 text-right">
+                            ₹{Number(booking.fare_per_person).toFixed(0)}/person
+                          </p>
+                        )}
                         {booking.payments[0] && (
                           <Badge variant="outline" className="mt-2">
                             Payment: {booking.payments[0].status}
