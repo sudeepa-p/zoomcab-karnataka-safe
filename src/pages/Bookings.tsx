@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Car, CreditCard, Clock } from "lucide-react";
+import { Calendar, MapPin, Car, CreditCard, Clock, CheckCircle, Truck, Navigation, MapPinned, User, Phone } from "lucide-react";
 import { toast } from "sonner";
 
 interface Booking {
@@ -20,6 +20,9 @@ interface Booking {
   passenger_name: string;
   passenger_phone: string;
   created_at: string;
+  driver_name: string | null;
+  driver_phone: string | null;
+  driver_vehicle_number: string | null;
   vehicles: {
     name: string;
     vehicle_type: string;
@@ -58,6 +61,34 @@ const Bookings = () => {
 
       if (error) throw error;
       setBookings(data || []);
+      
+      // Set up real-time subscription for status updates
+      const channel = supabase
+        .channel('bookings-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'bookings',
+            filter: `user_id=eq.${user?.id}`
+          },
+          (payload) => {
+            setBookings(prev => 
+              prev.map(booking => 
+                booking.id === payload.new.id 
+                  ? { ...booking, ...payload.new }
+                  : booking
+              )
+            );
+            toast.success('Booking status updated!');
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } catch (error: any) {
       console.error('Error loading bookings:', error);
       toast.error('Failed to load bookings');
@@ -67,13 +98,38 @@ const Bookings = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-500';
-      case 'pending': return 'bg-yellow-500';
-      case 'cancelled': return 'bg-red-500';
-      case 'completed': return 'bg-blue-500';
-      default: return 'bg-gray-500';
-    }
+    const colors: Record<string, string> = {
+      pending: "bg-yellow-500",
+      confirmed: "bg-blue-500",
+      driver_assigned: "bg-indigo-500",
+      on_the_way: "bg-purple-500",
+      picked_up: "bg-orange-500",
+      in_transit: "bg-green-500",
+      completed: "bg-emerald-600",
+      cancelled: "bg-red-500"
+    };
+    return colors[status] || "bg-gray-500";
+  };
+
+  const getStatusIcon = (status: string) => {
+    const icons: Record<string, any> = {
+      pending: Clock,
+      confirmed: CheckCircle,
+      driver_assigned: Car,
+      on_the_way: Navigation,
+      picked_up: MapPinned,
+      in_transit: Truck,
+      completed: CheckCircle,
+      cancelled: Clock
+    };
+    const Icon = icons[status] || Clock;
+    return <Icon className="h-4 w-4" />;
+  };
+
+  const formatStatus = (status: string) => {
+    return status.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
   };
 
   if (loading) {
@@ -118,14 +174,17 @@ const Bookings = () => {
                         <span>{booking.vehicles.name}</span>
                       </div>
                     </div>
-                    <Badge className={getStatusColor(booking.status)}>
-                      {booking.status}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(booking.status)}
+                      <Badge className={getStatusColor(booking.status)}>
+                        {formatStatus(booking.status)}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span>{new Date(booking.pickup_date).toLocaleDateString()}</span>
@@ -138,25 +197,45 @@ const Bookings = () => {
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <span>{booking.estimated_distance} km</span>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2">
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">Passenger:</span>
+                        <User className="h-4 w-4 text-muted-foreground" />
                         <span>{booking.passenger_name}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">Phone:</span>
+                        <Phone className="h-4 w-4 text-muted-foreground" />
                         <span>{booking.passenger_phone}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-2xl font-bold text-primary">
-                          ₹{Number(booking.estimated_fare).toFixed(0)}
-                        </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {booking.driver_name && (
+                        <div className="p-4 bg-primary/5 rounded-lg space-y-2">
+                          <p className="text-sm font-semibold text-primary">Driver Information</p>
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span>{booking.driver_name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="h-4 w-4 text-muted-foreground" />
+                            <span>{booking.driver_phone}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Car className="h-4 w-4 text-muted-foreground" />
+                            <span>{booking.driver_vehicle_number}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="pt-4 border-t">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Total Fare</span>
+                          <span className="text-3xl font-bold text-primary">
+                            ₹{Number(booking.estimated_fare).toFixed(0)}
+                          </span>
+                        </div>
                         {booking.payments[0] && (
-                          <Badge variant="outline" className="ml-2">
-                            {booking.payments[0].status}
+                          <Badge variant="outline" className="mt-2">
+                            Payment: {booking.payments[0].status}
                           </Badge>
                         )}
                       </div>

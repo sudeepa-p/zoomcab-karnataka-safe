@@ -17,6 +17,9 @@ export type Database = {
       bookings: {
         Row: {
           created_at: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          driver_vehicle_number: string | null
           dropoff_location: string
           estimated_distance: number | null
           estimated_fare: number | null
@@ -35,6 +38,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          driver_vehicle_number?: string | null
           dropoff_location: string
           estimated_distance?: number | null
           estimated_fare?: number | null
@@ -53,6 +59,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          driver_vehicle_number?: string | null
           dropoff_location?: string
           estimated_distance?: number | null
           estimated_fare?: number | null

@@ -115,7 +115,9 @@ const Booking = () => {
 
       if (error) throw error;
 
-      toast.success('Booking created successfully!');
+      toast.success('🎉 Booking Confirmed! Your ride is being arranged. Check My Bookings for updates.', {
+        duration: 5000,
+      });
       navigate('/bookings');
     } catch (error: any) {
       console.error('Booking error:', error);

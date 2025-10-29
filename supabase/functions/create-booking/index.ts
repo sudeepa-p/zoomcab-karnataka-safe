@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
         special_requests: bookingData.special_requests,
         estimated_distance: distance,
         estimated_fare: estimatedFare,
-        status: 'pending'
+        status: 'confirmed' // Set to confirmed immediately
       })
       .select()
       .single();
