@@ -2,8 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Calendar, Clock, Shield, Star, Route } from "lucide-react";
+import { MapPin, Calendar, Clock, Shield, Star, Route, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,6 +15,7 @@ import heroImage from "@/assets/hero-cab.jpg";
 const Hero = () => {
   const [fromLocation, setFromLocation] = useState("");
   const [toLocation, setToLocation] = useState("");
+  const [isSharedRide, setIsSharedRide] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -25,7 +29,7 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background with overlay */}
       <div 
         className="absolute inset-0 bg-cover bg-center"
@@ -42,15 +46,27 @@ const Hero = () => {
           <div className="text-center lg:text-left">
             <h1 className="text-5xl lg:text-7xl font-bold text-white mb-6 leading-tight">
               ZoomGo
-              <span className="block text-primary-glow">Karnataka</span>
+              <span className="block text-primary-glow">All India</span>
             </h1>
-            <p className="text-xl lg:text-2xl text-white/90 mb-8 leading-relaxed">
-              Premium outstation cab service with advanced route optimization 
-              and door-to-door safety across Karnataka
+            <p className="text-xl lg:text-2xl text-white/90 mb-4 leading-relaxed">
+              Premium outstation cab service with live tracking
+              and safe rides across all of India
             </p>
             
+            {/* Popular Cities */}
+            <div className="mb-6">
+              <p className="text-white/70 text-sm mb-2">Popular Routes:</p>
+              <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
+                {['Mumbai', 'Delhi', 'Bengaluru', 'Chennai', 'Hyderabad', 'Pune', 'Kolkata', 'Jaipur'].map((city) => (
+                  <span key={city} className="px-3 py-1 bg-white/10 border border-white/20 rounded-full text-white text-sm backdrop-blur-sm">
+                    {city}
+                  </span>
+                ))}
+              </div>
+            </div>
+            
             {/* Key Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="flex items-center justify-center lg:justify-start gap-2 text-white">
                 <Route className="h-5 w-5 text-primary-glow" />
                 <span className="font-medium">Smart Routes</span>
@@ -61,7 +77,7 @@ const Hero = () => {
               </div>
               <div className="flex items-center justify-center lg:justify-start gap-2 text-white">
                 <Star className="h-5 w-5 text-primary-glow" />
-                <span className="font-medium">Premium Fleet</span>
+                <span className="font-medium">Live Tracking</span>
               </div>
             </div>
           </div>
@@ -120,12 +136,33 @@ const Hero = () => {
                     <SelectValue placeholder="Select Vehicle Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sedan">Sedan (4 seats)</SelectItem>
-                    <SelectItem value="suv">SUV (6-7 seats)</SelectItem>
-                    <SelectItem value="luxury">Luxury (Premium)</SelectItem>
-                    <SelectItem value="tempo">Tempo Traveller (12+ seats)</SelectItem>
+                    <SelectItem value="sedan">Sedan (4 seats) - ₹12/km</SelectItem>
+                    <SelectItem value="suv">SUV/XUV (6-7 seats) - ₹15/km</SelectItem>
+                    <SelectItem value="tempo">Tempo Traveller (12+ seats) - ₹17/km</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* Ride Sharing Option */}
+                <div className="flex items-center space-x-3 p-4 bg-green-500/20 border border-green-500/30 rounded-lg backdrop-blur-sm">
+                  <Checkbox 
+                    id="shared-ride" 
+                    checked={isSharedRide}
+                    onCheckedChange={(checked) => setIsSharedRide(checked as boolean)}
+                    className="border-white"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="shared-ride" className="text-white font-semibold cursor-pointer flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Share & Save 30%
+                    </Label>
+                    <p className="text-white/80 text-xs">Split costs with other passengers on the same route</p>
+                  </div>
+                  {isSharedRide && (
+                    <Badge className="bg-green-500 hover:bg-green-600">
+                      30% OFF
+                    </Badge>
+                  )}
+                </div>
 
                 {/* Book Now Button */}
                 <Button 
@@ -138,9 +175,9 @@ const Hero = () => {
 
                 {/* Quick Info */}
                 <div className="text-center text-white/80 text-sm mt-4">
-                  <p>✓ Instant booking confirmation</p>
-                  <p>✓ 24/7 customer support</p>
-                  <p>✓ GPS tracking & live updates</p>
+                  <p>✓ Instant booking • All India coverage</p>
+                  <p>✓ 24/7 support • Live GPS tracking</p>
+                  <p>✓ Safe rides • Verified drivers</p>
                 </div>
               </div>
             </CardContent>
