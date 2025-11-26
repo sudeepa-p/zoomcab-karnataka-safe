@@ -11,12 +11,20 @@ const Header = () => {
   const navigate = useNavigate();
 
   const navItems = [
-    { name: "Home", href: "#home" },
-    { name: "Services", href: "#services" },
-    { name: "Safety", href: "#safety" },
-    { name: "Routes", href: "#routes" },
-    { name: "Contact", href: "#contact" },
+    { name: "Home", href: "/#home" },
+    { name: "Services", href: "/#services" },
+    { name: "Safety Routes", href: "/#safety-routes" },
+    { name: "Contact", href: "/#contact" },
   ];
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const targetId = href.substring(2); // Remove "/#"
+    const element = document.getElementById(targetId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <header className="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-md border-b border-border/50">
@@ -40,7 +48,8 @@ const Header = () => {
               <a
                 key={item.name}
                 href={item.href}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                onClick={(e) => handleNavClick(e, item.href)}
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
               >
                 {item.name}
               </a>
@@ -53,6 +62,9 @@ const Header = () => {
               <Phone className="h-4 w-4" />
               <span>+91 98765 43210</span>
             </div>
+            <Button variant="outline" size="sm" onClick={() => navigate("/driver/auth")}>
+              Driver Login
+            </Button>
             {user ? (
               <>
                 <Button variant="ghost" onClick={() => navigate('/bookings')}>
@@ -104,8 +116,11 @@ const Header = () => {
                     <a
                       key={item.name}
                       href={item.href}
-                      onClick={() => setIsOpen(false)}
-                      className="text-lg font-medium text-foreground hover:text-primary transition-colors py-2"
+                      onClick={(e) => {
+                        handleNavClick(e, item.href);
+                        setIsOpen(false);
+                      }}
+                      className="text-lg font-medium text-foreground hover:text-primary transition-colors py-2 cursor-pointer"
                     >
                       {item.name}
                     </a>
@@ -122,6 +137,16 @@ const Header = () => {
                     <Clock className="h-5 w-5 text-secondary" />
                     <span>24/7 Available</span>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => {
+                      navigate("/driver/auth");
+                      setIsOpen(false);
+                    }}
+                  >
+                    Driver Login
+                  </Button>
                   {user ? (
                     <>
                       <Button variant="ghost" className="w-full" onClick={() => {

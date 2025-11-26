@@ -18,6 +18,9 @@ export type Database = {
         Row: {
           available_seats: number | null
           created_at: string | null
+          current_driver_location: Json | null
+          discount_applied: number | null
+          driver_id: string | null
           driver_name: string | null
           driver_phone: string | null
           driver_vehicle_number: string | null
@@ -28,6 +31,7 @@ export type Database = {
           id: string
           is_primary_booking: boolean | null
           is_shared_ride: boolean | null
+          offer_id: string | null
           parent_booking_id: string | null
           passenger_count: number
           passenger_name: string
@@ -39,6 +43,7 @@ export type Database = {
           route_segment_start: string | null
           special_requests: string | null
           status: string | null
+          tracking_enabled: boolean | null
           updated_at: string | null
           user_id: string
           vehicle_id: string
@@ -46,6 +51,9 @@ export type Database = {
         Insert: {
           available_seats?: number | null
           created_at?: string | null
+          current_driver_location?: Json | null
+          discount_applied?: number | null
+          driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           driver_vehicle_number?: string | null
@@ -56,6 +64,7 @@ export type Database = {
           id?: string
           is_primary_booking?: boolean | null
           is_shared_ride?: boolean | null
+          offer_id?: string | null
           parent_booking_id?: string | null
           passenger_count: number
           passenger_name: string
@@ -67,6 +76,7 @@ export type Database = {
           route_segment_start?: string | null
           special_requests?: string | null
           status?: string | null
+          tracking_enabled?: boolean | null
           updated_at?: string | null
           user_id: string
           vehicle_id: string
@@ -74,6 +84,9 @@ export type Database = {
         Update: {
           available_seats?: number | null
           created_at?: string | null
+          current_driver_location?: Json | null
+          discount_applied?: number | null
+          driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           driver_vehicle_number?: string | null
@@ -84,6 +97,7 @@ export type Database = {
           id?: string
           is_primary_booking?: boolean | null
           is_shared_ride?: boolean | null
+          offer_id?: string | null
           parent_booking_id?: string | null
           passenger_count?: number
           passenger_name?: string
@@ -95,11 +109,26 @@ export type Database = {
           route_segment_start?: string | null
           special_requests?: string | null
           status?: string | null
+          tracking_enabled?: boolean | null
           updated_at?: string | null
           user_id?: string
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "ride_share_offers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_parent_booking_id_fkey"
             columns: ["parent_booking_id"]
@@ -119,6 +148,211 @@ export type Database = {
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_earnings: {
+        Row: {
+          base_amount: number
+          booking_id: string
+          commission_amount: number
+          created_at: string | null
+          driver_id: string
+          id: string
+          net_amount: number
+          payment_date: string | null
+          payment_status: string | null
+        }
+        Insert: {
+          base_amount: number
+          booking_id: string
+          commission_amount: number
+          created_at?: string | null
+          driver_id: string
+          id?: string
+          net_amount: number
+          payment_date?: string | null
+          payment_status?: string | null
+        }
+        Update: {
+          base_amount?: number
+          booking_id?: string
+          commission_amount?: number
+          created_at?: string | null
+          driver_id?: string
+          id?: string
+          net_amount?: number
+          payment_date?: string | null
+          payment_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_earnings_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_earnings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_profiles: {
+        Row: {
+          aadhar_number: string | null
+          bank_account: string | null
+          created_at: string | null
+          current_location: Json | null
+          id: string
+          ifsc_code: string | null
+          is_available: boolean | null
+          license_expiry: string
+          license_number: string
+          pan_number: string | null
+          rating: number | null
+          status: string | null
+          total_rides: number | null
+          updated_at: string | null
+          user_id: string
+          vehicle_registration: string | null
+        }
+        Insert: {
+          aadhar_number?: string | null
+          bank_account?: string | null
+          created_at?: string | null
+          current_location?: Json | null
+          id?: string
+          ifsc_code?: string | null
+          is_available?: boolean | null
+          license_expiry: string
+          license_number: string
+          pan_number?: string | null
+          rating?: number | null
+          status?: string | null
+          total_rides?: number | null
+          updated_at?: string | null
+          user_id: string
+          vehicle_registration?: string | null
+        }
+        Update: {
+          aadhar_number?: string | null
+          bank_account?: string | null
+          created_at?: string | null
+          current_location?: Json | null
+          id?: string
+          ifsc_code?: string | null
+          is_available?: boolean | null
+          license_expiry?: string
+          license_number?: string
+          pan_number?: string | null
+          rating?: number | null
+          status?: string | null
+          total_rides?: number | null
+          updated_at?: string | null
+          user_id?: string
+          vehicle_registration?: string | null
+        }
+        Relationships: []
+      }
+      driver_route_preferences: {
+        Row: {
+          created_at: string | null
+          driver_id: string
+          id: string
+          max_distance_km: number | null
+          preferred_cities: string[] | null
+          preferred_routes: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          driver_id: string
+          id?: string
+          max_distance_km?: number | null
+          preferred_cities?: string[] | null
+          preferred_routes?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          driver_id?: string
+          id?: string
+          max_distance_km?: number | null
+          preferred_cities?: string[] | null
+          preferred_routes?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_route_preferences_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: true
+            referencedRelation: "driver_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_vehicles: {
+        Row: {
+          capacity: number
+          color: string | null
+          created_at: string | null
+          driver_id: string
+          fitness_cert_expiry: string | null
+          id: string
+          insurance_expiry: string
+          is_active: boolean | null
+          pollution_cert_expiry: string
+          registration_number: string
+          updated_at: string | null
+          vehicle_model: string
+          vehicle_type: string
+          vehicle_year: number
+        }
+        Insert: {
+          capacity: number
+          color?: string | null
+          created_at?: string | null
+          driver_id: string
+          fitness_cert_expiry?: string | null
+          id?: string
+          insurance_expiry: string
+          is_active?: boolean | null
+          pollution_cert_expiry: string
+          registration_number: string
+          updated_at?: string | null
+          vehicle_model: string
+          vehicle_type: string
+          vehicle_year: number
+        }
+        Update: {
+          capacity?: number
+          color?: string | null
+          created_at?: string | null
+          driver_id?: string
+          fitness_cert_expiry?: string | null
+          id?: string
+          insurance_expiry?: string
+          is_active?: boolean | null
+          pollution_cert_expiry?: string
+          registration_number?: string
+          updated_at?: string | null
+          vehicle_model?: string
+          vehicle_type?: string
+          vehicle_year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_vehicles_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "driver_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -173,6 +407,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ride_share_offers: {
+        Row: {
+          created_at: string | null
+          description: string
+          discount_percentage: number
+          id: string
+          is_active: boolean | null
+          min_participants: number | null
+          title: string
+          valid_from: string | null
+          valid_until: string
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          discount_percentage: number
+          id?: string
+          is_active?: boolean | null
+          min_participants?: number | null
+          title: string
+          valid_from?: string | null
+          valid_until: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          discount_percentage?: number
+          id?: string
+          is_active?: boolean | null
+          min_participants?: number | null
+          title?: string
+          valid_from?: string | null
+          valid_until?: string
+        }
+        Relationships: []
       }
       routes: {
         Row: {
@@ -243,6 +513,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           created_at: string | null
@@ -305,10 +596,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "passenger" | "driver" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -435,6 +732,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["passenger", "driver", "admin"],
+    },
   },
 } as const
