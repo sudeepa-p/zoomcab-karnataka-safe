@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Car, DollarSign, MapPin, Navigation, Settings, LogOut, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Car, DollarSign, MapPin, Navigation, Settings, LogOut, Clock, Bell } from "lucide-react";
 import { toast } from "sonner";
+import { RideRequests } from "@/components/driver/RideRequests";
 
 const DriverDashboard = () => {
   const navigate = useNavigate();
@@ -17,6 +19,7 @@ const DriverDashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [earnings, setEarnings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
   useEffect(() => {
     if (!user || !isDriver) {
@@ -49,6 +52,15 @@ const DriverDashboard = () => {
 
       const totalEarnings = earningsData?.reduce((sum, e) => sum + Number(e.net_amount), 0) || 0;
       setEarnings({ total: totalEarnings, pending: 0 });
+
+      // Load pending requests count
+      const { count } = await supabase
+        .from("bookings")
+        .select("*", { count: 'exact', head: true })
+        .eq("status", "pending")
+        .is("driver_id", null);
+
+      setPendingRequestsCount(count || 0);
 
     } catch (error) {
       console.error("Error loading dashboard:", error);
@@ -182,64 +194,93 @@ const DriverDashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Active Bookings</CardTitle>
+            <CardTitle>Ride Management</CardTitle>
           </CardHeader>
           <CardContent>
-            {bookings.length === 0 ? (
-              <div className="text-center py-8">
-                <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No active bookings</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {isAvailable ? "Waiting for ride requests..." : "Go online to receive bookings"}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {bookings.map((booking) => (
-                  <Card key={booking.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{booking.passenger_name}</h3>
-                            <Badge className={getStatusColor(booking.status)}>
-                              {booking.status.replace('_', ' ').toUpperCase()}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{booking.passenger_phone}</p>
-                        </div>
-                        <p className="text-lg font-bold">₹{booking.estimated_fare}</p>
-                      </div>
-                      
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 text-green-500 mt-0.5" />
-                          <div>
-                            <span className="font-medium">Pickup:</span> {booking.pickup_location}
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 text-red-500 mt-0.5" />
-                          <div>
-                            <span className="font-medium">Drop:</span> {booking.dropoff_location}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>{booking.pickup_date} at {booking.pickup_time}</span>
-                        </div>
-                      </div>
+            <Tabs defaultValue="requests" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="requests" className="relative">
+                  <Bell className="h-4 w-4 mr-2" />
+                  Incoming Requests
+                  {pendingRequestsCount > 0 && (
+                    <Badge className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center">
+                      {pendingRequestsCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="active">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Active Rides
+                </TabsTrigger>
+              </TabsList>
 
-                      <div className="flex gap-2 mt-4">
-                        <Button className="flex-1" onClick={() => navigate(`/driver/ride/${booking.id}`)}>
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+              <TabsContent value="requests" className="mt-6">
+                {driverProfile && (
+                  <RideRequests 
+                    driverProfileId={driverProfile.id} 
+                    onRequestAccepted={loadDashboardData}
+                  />
+                )}
+              </TabsContent>
+
+              <TabsContent value="active" className="mt-6">
+                {bookings.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No active bookings</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {isAvailable ? "Waiting for ride requests..." : "Go online to receive bookings"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {bookings.map((booking) => (
+                      <Card key={booking.id}>
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">{booking.passenger_name}</h3>
+                                <Badge className={getStatusColor(booking.status)}>
+                                  {booking.status.replace('_', ' ').toUpperCase()}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{booking.passenger_phone}</p>
+                            </div>
+                            <p className="text-lg font-bold">₹{booking.estimated_fare}</p>
+                          </div>
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-green-500 mt-0.5" />
+                              <div>
+                                <span className="font-medium">Pickup:</span> {booking.pickup_location}
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-red-500 mt-0.5" />
+                              <div>
+                                <span className="font-medium">Drop:</span> {booking.dropoff_location}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <span>{booking.pickup_date} at {booking.pickup_time}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2 mt-4">
+                            <Button className="flex-1" onClick={() => navigate(`/driver/ride/${booking.id}`)}>
+                              View Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
