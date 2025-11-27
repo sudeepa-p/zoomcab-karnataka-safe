@@ -10,8 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { MapPin, Calendar, Clock, Users, Phone, User, Share2, Car } from "lucide-react";
+import { Calendar, Clock, Users, Phone, User, Share2, Car, Route } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PopularRoutes } from "@/components/booking/PopularRoutes";
+import { RouteMap } from "@/components/booking/RouteMap";
+import { CityAutocomplete } from "@/components/booking/CityAutocomplete";
 
 interface Vehicle {
   id: string;
@@ -209,9 +212,29 @@ const Booking = () => {
   const locations = getUniqueLocations();
   const estimate = calculateEstimate();
 
+  const handleSelectPopularRoute = (from: string, to: string) => {
+    setFormData({
+      ...formData,
+      pickup_location: from,
+      dropoff_location: to,
+    });
+    toast.success(`Route selected: ${from} → ${to}`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background/95 py-12 px-4">
-      <div className="container mx-auto max-w-4xl space-y-6">
+      <div className="container mx-auto max-w-6xl space-y-6">
+        {/* Page Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold flex items-center justify-center gap-2">
+            <Route className="h-8 w-8 text-primary" />
+            Book Your Journey
+          </h1>
+          <p className="text-muted-foreground">All-India cab booking with real-time tracking</p>
+        </div>
+
+        {/* Popular Routes Section */}
+        <PopularRoutes routes={routes} onSelectRoute={handleSelectPopularRoute} />
         {/* Available Shared Rides */}
         {sharedRides.length > 0 && (
           <Card className="border-primary/20">
@@ -281,59 +304,54 @@ const Booking = () => {
           </Card>
         )}
 
-        {/* Booking Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-3xl">
-              {formData.join_shared_ride_id ? 'Join Shared Ride' : 'Book Your Cab'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Locations */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="pickup_location">Pickup Location</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Select
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Booking Form */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-3xl">
+                {formData.join_shared_ride_id ? 'Join Shared Ride' : 'Book Your Cab'}
+              </CardTitle>
+              {estimate && (
+                <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
+                  <div className="flex items-center gap-2">
+                    <Route className="h-4 w-4" />
+                    <span className="font-semibold text-primary">{estimate.distance} km</span>
+                  </div>
+                  <div className="text-lg font-bold text-primary">
+                    ₹{Math.round(estimate.fare)}
+                  </div>
+                  {formData.is_shared_ride && (
+                    <Badge variant="secondary">Your Share</Badge>
+                  )}
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Locations with Autocomplete */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="pickup_location">Pickup Location</Label>
+                    <CityAutocomplete
+                      locations={locations}
                       value={formData.pickup_location}
                       onValueChange={(value) => setFormData({...formData, pickup_location: value})}
-                      required
-                    >
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Select pickup" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map(loc => (
-                          <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select pickup city"
+                      disabled={false}
+                    />
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="dropoff_location">Drop Location</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Select
+                  <div>
+                    <Label htmlFor="dropoff_location">Drop Location</Label>
+                    <CityAutocomplete
+                      locations={locations}
                       value={formData.dropoff_location}
                       onValueChange={(value) => setFormData({...formData, dropoff_location: value})}
-                      required
-                    >
-                      <SelectTrigger className="pl-10">
-                        <SelectValue placeholder="Select drop" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {locations.map(loc => (
-                          <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select drop city"
+                      disabled={false}
+                    />
                   </div>
                 </div>
-              </div>
 
               {/* Date & Time */}
               <div className="grid md:grid-cols-2 gap-4">
@@ -472,37 +490,22 @@ const Booking = () => {
                 />
               </div>
 
-              {/* Fare Estimate */}
-              {estimate && (
-                <Card className="bg-primary/5">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Distance</p>
-                        <p className="text-2xl font-bold">{estimate.distance} km</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">
-                          {formData.is_shared_ride ? 'Your Share' : 'Estimated Fare'}
-                        </p>
-                        <p className="text-3xl font-bold text-primary">₹{Math.round(estimate.fare)}</p>
-                        {formData.is_shared_ride && (
-                          <p className="text-xs text-muted-foreground">
-                            Full fare: ₹{Math.round(estimate.fullFare)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? 'Processing...' : formData.join_shared_ride_id ? 'Join Shared Ride' : 'Confirm Booking'}
               </Button>
             </form>
           </CardContent>
         </Card>
+
+        {/* Route Map Visualization */}
+        <div className="lg:col-span-1">
+          <RouteMap 
+            pickupLocation={formData.pickup_location}
+            dropoffLocation={formData.dropoff_location}
+            distance={estimate?.distance}
+          />
+        </div>
+      </div>
       </div>
     </div>
   );
