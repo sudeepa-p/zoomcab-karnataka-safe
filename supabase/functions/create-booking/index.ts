@@ -17,6 +17,8 @@ interface BookingRequest {
   special_requests?: string;
   is_shared_ride?: boolean;
   join_shared_ride_id?: string;
+  payment_method?: string;
+  estimated_distance?: number;
 }
 
 Deno.serve(async (req) => {
@@ -64,7 +66,8 @@ Deno.serve(async (req) => {
       .or(`and(from_location.eq.${bookingData.pickup_location},to_location.eq.${bookingData.dropoff_location}),and(from_location.eq.${bookingData.dropoff_location},to_location.eq.${bookingData.pickup_location})`)
       .single();
 
-    const distance = route?.distance_km || 100;
+    // Calculate distance from routes table or use provided estimate
+    const distance = bookingData.estimated_distance || route?.distance_km || 100;
     const fullFare = Number(distance) * Number(vehicle.price_per_km);
 
     // Handle joining an existing shared ride
@@ -163,7 +166,7 @@ Deno.serve(async (req) => {
           booking_id: participantBooking.id,
           user_id: user.id,
           amount: segmentFare,
-          payment_method: 'cash',
+          payment_method: bookingData.payment_method || 'cash',
           status: 'pending'
         })
         .select()
@@ -229,7 +232,7 @@ Deno.serve(async (req) => {
         booking_id: booking.id,
         user_id: user.id,
         amount: booking.estimated_fare,
-        payment_method: 'cash',
+        payment_method: bookingData.payment_method || 'cash',
         status: 'pending'
       })
       .select()

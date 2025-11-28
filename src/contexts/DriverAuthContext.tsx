@@ -79,6 +79,7 @@ export const DriverAuthProvider = ({ children }: { children: ReactNode }) => {
           data: {
             full_name: fullName,
             phone: phone,
+            user_type: 'driver',
           },
         },
       });
@@ -86,21 +87,38 @@ export const DriverAuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
 
       if (data.user) {
-        await supabase.from("user_roles").insert({
+        // Insert driver role
+        const { error: roleError } = await supabase.from("user_roles").insert({
           user_id: data.user.id,
           role: "driver",
         });
 
-        await supabase.from("driver_profiles").insert({
+        if (roleError) {
+          console.error("Role insertion error:", roleError);
+          toast.error("Failed to assign driver role. Please contact support.");
+          throw roleError;
+        }
+
+        // Insert driver profile
+        const { error: profileError } = await supabase.from("driver_profiles").insert({
           user_id: data.user.id,
           license_number: licenseNumber,
           license_expiry: licenseExpiry,
         });
 
-        toast.success("Account created successfully! Please check your email to verify your account.");
+        if (profileError) {
+          console.error("Profile insertion error:", profileError);
+          toast.error("Failed to create driver profile. Please contact support.");
+          throw profileError;
+        }
+
+        toast.success("Driver account created! Please check your email to verify your account.", {
+          duration: 6000,
+        });
       }
     } catch (error: any) {
-      toast.error(error.message);
+      console.error("Signup error:", error);
+      toast.error(error.message || "Failed to create account. Please try again.");
       throw error;
     }
   };
@@ -112,25 +130,43 @@ export const DriverAuthProvider = ({ children }: { children: ReactNode }) => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes("Email not confirmed")) {
+          toast.error("Please verify your email before signing in. Check your inbox for the verification link.");
+        } else if (error.message.includes("Invalid login credentials")) {
+          toast.error("Invalid email or password. Please try again.");
+        } else {
+          toast.error(error.message);
+        }
+        throw error;
+      }
 
       if (data.user) {
-        const { data: roleData } = await supabase
+        // Check if user has driver role
+        const { data: roleData, error: roleError } = await supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", data.user.id)
           .eq("role", "driver")
-          .single();
+          .maybeSingle();
+
+        if (roleError) {
+          console.error("Role check error:", roleError);
+          toast.error("Failed to verify driver status. Please try again.");
+          await supabase.auth.signOut();
+          throw roleError;
+        }
 
         if (!roleData) {
           await supabase.auth.signOut();
-          throw new Error("This account is not registered as a driver.");
+          toast.error("This account is not registered as a driver. Please use the passenger login or sign up as a driver.");
+          throw new Error("Not a driver account");
         }
 
-        toast.success("Signed in successfully!");
+        toast.success("Welcome back! Signed in successfully.");
       }
     } catch (error: any) {
-      toast.error(error.message);
+      console.error("Sign in error:", error);
       throw error;
     }
   };

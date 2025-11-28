@@ -36,6 +36,8 @@ export type Database = {
           passenger_count: number
           passenger_name: string
           passenger_phone: string
+          payment_method: string | null
+          payment_status: string | null
           pickup_date: string
           pickup_location: string
           pickup_time: string
@@ -69,6 +71,8 @@ export type Database = {
           passenger_count: number
           passenger_name: string
           passenger_phone: string
+          payment_method?: string | null
+          payment_status?: string | null
           pickup_date: string
           pickup_location: string
           pickup_time: string
@@ -102,6 +106,8 @@ export type Database = {
           passenger_count?: number
           passenger_name?: string
           passenger_phone?: string
+          payment_method?: string | null
+          payment_status?: string | null
           pickup_date?: string
           pickup_location?: string
           pickup_time?: string

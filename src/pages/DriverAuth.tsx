@@ -62,10 +62,15 @@ const DriverAuth = () => {
               <Car className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Driver Portal</CardTitle>
+          <CardTitle className="text-2xl font-bold">Driver Portal</CardTitle>
           <CardDescription>
             Sign in to your driver account or create a new one
           </CardDescription>
+          <div className="pt-2">
+            <p className="text-xs text-muted-foreground">
+              Not a driver? <a href="/auth" className="text-primary hover:underline">Sign in as passenger</a>
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
