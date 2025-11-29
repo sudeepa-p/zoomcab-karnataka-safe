@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PopularRoutes } from "@/components/booking/PopularRoutes";
 import { RouteMap } from "@/components/booking/RouteMap";
 import { CityAutocomplete } from "@/components/booking/CityAutocomplete";
+import { FareComparison } from "@/components/booking/FareComparison";
 
 interface Vehicle {
   id: string;
@@ -304,6 +305,31 @@ const Booking = () => {
 
         {/* Popular Routes Section */}
         <PopularRoutes routes={routes} onSelectRoute={handleSelectPopularRoute} />
+
+        {/* Fare Comparison - Show when estimate is available */}
+        {estimate && formData.vehicle_id && (
+          <Card className="border-primary/30 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Car className="h-6 w-6 text-primary" />
+                Fare Comparison
+              </CardTitle>
+              <CardDescription>
+                Compare regular and shared ride pricing for your journey
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FareComparison
+                distance={estimate.distance}
+                vehicleName={vehicles.find(v => v.id === formData.vehicle_id)?.name || ""}
+                vehicleCapacity={vehicles.find(v => v.id === formData.vehicle_id)?.capacity || 4}
+                pricePerKm={vehicles.find(v => v.id === formData.vehicle_id)?.price_per_km || 0}
+                passengerCount={parseInt(formData.passenger_count) || 1}
+                isSharedRide={formData.is_shared_ride}
+              />
+            </CardContent>
+          </Card>
+        )}
         
         {/* Available Shared Rides */}
         {sharedRides.length > 0 && (
