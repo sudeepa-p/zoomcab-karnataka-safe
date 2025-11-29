@@ -5,8 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Car, Clock, CheckCircle, Truck, Navigation, MapPinned, User, Phone, Share2, Users } from "lucide-react";
+import { Calendar, MapPin, Car, Clock, CheckCircle, Truck, Navigation, MapPinned, User, Phone, Share2, Users, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Booking {
   id: string;
@@ -62,6 +73,7 @@ const Bookings = () => {
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -189,6 +201,26 @@ const Bookings = () => {
     ).join(' ');
   };
 
+  const handleDeleteBooking = async (bookingId: string) => {
+    setDeletingId(bookingId);
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      toast.success('Booking deleted successfully');
+      loadBookings();
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast.error(error.message || 'Failed to delete booking');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -243,6 +275,46 @@ const Bookings = () => {
                         <span>{booking.vehicles.name}</span>
                       </div>
                     </div>
+                    
+                    {/* Delete Button */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={deletingId === booking.id}
+                        >
+                          {deletingId === booking.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Booking?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this booking? This action cannot be undone.
+                            {booking.status === 'confirmed' || booking.status === 'driver_assigned' ? (
+                              <span className="block mt-2 text-destructive font-medium">
+                                ⚠️ This booking is active. Please consider canceling with the driver first.
+                              </span>
+                            ) : null}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteBooking(booking.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </CardHeader>
                 <CardContent>
