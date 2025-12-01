@@ -393,6 +393,20 @@ const Bookings = () => {
                             <Car className="h-4 w-4 text-muted-foreground" />
                             <span>{booking.driver_vehicle_number}</span>
                           </div>
+                          {/* Contact Captain Button */}
+                          {booking.driver_phone && (booking.status === 'confirmed' || booking.status === 'driver_assigned') && (
+                            <Button 
+                              className="w-full mt-3"
+                              size="sm"
+                              onClick={() => {
+                                window.location.href = `tel:${booking.driver_phone}`;
+                                toast.success('Opening phone dialer...');
+                              }}
+                            >
+                              <Phone className="h-4 w-4 mr-2" />
+                              Contact Captain
+                            </Button>
+                          )}
                         </div>
                       )}
                       

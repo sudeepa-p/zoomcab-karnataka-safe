@@ -17,6 +17,8 @@ import { PopularRoutes } from "@/components/booking/PopularRoutes";
 import { RouteMap } from "@/components/booking/RouteMap";
 import { CityAutocomplete } from "@/components/booking/CityAutocomplete";
 import { FareComparison } from "@/components/booking/FareComparison";
+import { IntelligentRideMatching } from "@/components/booking/IntelligentRideMatching";
+import { karnatakaLocations } from "@/data/karnatakaLocations";
 
 interface Vehicle {
   id: string;
@@ -41,11 +43,16 @@ interface SharedRide {
   available_seats: number;
   passenger_count: number;
   fare_per_person: number;
+  estimated_distance: number;
   vehicle_id: string;
   vehicles: {
     name: string;
     capacity: number;
   };
+  matchScore: number;
+  isExactMatch: boolean;
+  isOnTheWay: boolean;
+  intermediatePoint?: string;
 }
 
 const Booking = () => {
@@ -177,34 +184,93 @@ const Booking = () => {
       return;
     }
 
-    // Filter rides that match route or are on the same path
-    const matchingRides = data?.filter(ride => {
-      const matchesRoute = 
-        (ride.pickup_location === formData.pickup_location && ride.dropoff_location === formData.dropoff_location) ||
-        isOnRoute(formData.pickup_location, formData.dropoff_location, ride.pickup_location, ride.dropoff_location);
-      
-      return matchesRoute && ride.available_seats >= parseInt(formData.passenger_count);
-    }) || [];
+    // Intelligent matching algorithm (like Ola's on-the-way system)
+    const matchingRides = data?.map(ride => {
+      let matchScore = 0;
+      let isExactMatch = false;
+      let isOnTheWay = false;
+      let intermediatePoint = undefined;
 
-    setSharedRides(matchingRides as SharedRide[]);
+      // Perfect match: same pickup and dropoff
+      if (ride.pickup_location === formData.pickup_location && 
+          ride.dropoff_location === formData.dropoff_location) {
+        matchScore = 100;
+        isExactMatch = true;
+      }
+      // On-the-way match: user's pickup/dropoff is between ride's route
+      else if (isPointOnRoute(formData.pickup_location, formData.dropoff_location, 
+                              ride.pickup_location, ride.dropoff_location)) {
+        matchScore = 85;
+        isOnTheWay = true;
+        intermediatePoint = formData.pickup_location !== ride.pickup_location 
+          ? formData.pickup_location 
+          : formData.dropoff_location;
+      }
+      // Partial match: at least one location matches
+      else if (ride.pickup_location === formData.pickup_location || 
+               ride.dropoff_location === formData.dropoff_location) {
+        matchScore = 60;
+        isOnTheWay = true;
+      }
+
+      return {
+        ...ride,
+        matchScore,
+        isExactMatch,
+        isOnTheWay,
+        intermediatePoint
+      } as SharedRide;
+    }).filter(ride => 
+      ride.matchScore > 0 && 
+      ride.available_seats >= parseInt(formData.passenger_count)
+    ) || [];
+
+    setSharedRides(matchingRides);
   };
 
-  const isOnRoute = (userPickup: string, userDrop: string, ridePickup: string, rideDrop: string) => {
-    // Check if user's pickup/drop is between the ride's route
-    const locations = [ridePickup, rideDrop, userPickup, userDrop];
-    // Simple heuristic: if all locations are in routes, it's likely on the same path
-    return locations.every(loc => routes.some(r => 
-      r.from_location === loc || r.to_location === loc
-    ));
+  const isPointOnRoute = (userPickup: string, userDrop: string, ridePickup: string, rideDrop: string) => {
+    // Intelligent route matching for Karnataka locations
+    // Check if user's journey is part of the ride's main route
+    
+    // Example: Ride from Bengaluru to Hubballi, user wants Bengaluru to Dharwad
+    // Dharwad is on the way to Hubballi
+    const commonRouteClusters = [
+      ['Bengaluru', 'Tumakuru', 'Chitradurga', 'Davangere', 'Hubballi', 'Dharwad'],
+      ['Bengaluru', 'Mysuru', 'Chamarajanagar', 'Gundlupet'],
+      ['Bengaluru', 'Hassan', 'Shivamogga', 'Shimoga'],
+      ['Mysuru', 'Hassan', 'Mangaluru', 'Udupi'],
+      ['Hubballi', 'Gadag', 'Bagalkot', 'Bijapur', 'Vijayapura'],
+      ['Bengaluru', 'Kolar', 'Mulbagal', 'Anantapur'],
+    ];
+
+    // Check if all four points are in a common route cluster
+    for (const cluster of commonRouteClusters) {
+      const allInCluster = [ridePickup, rideDrop, userPickup, userDrop].every(loc =>
+        cluster.some(city => loc.toLowerCase().includes(city.toLowerCase()))
+      );
+      
+      if (allInCluster) {
+        // Check if user's segment is within the ride's segment
+        const ridePickupIndex = cluster.findIndex(c => ridePickup.toLowerCase().includes(c.toLowerCase()));
+        const rideDropIndex = cluster.findIndex(c => rideDrop.toLowerCase().includes(c.toLowerCase()));
+        const userPickupIndex = cluster.findIndex(c => userPickup.toLowerCase().includes(c.toLowerCase()));
+        const userDropIndex = cluster.findIndex(c => userDrop.toLowerCase().includes(c.toLowerCase()));
+
+        if (ridePickupIndex !== -1 && rideDropIndex !== -1 && 
+            userPickupIndex !== -1 && userDropIndex !== -1) {
+          // User's route should be within ride's route
+          return (userPickupIndex >= Math.min(ridePickupIndex, rideDropIndex) &&
+                  userDropIndex <= Math.max(ridePickupIndex, rideDropIndex));
+        }
+      }
+    }
+
+    return false;
   };
 
   const getUniqueLocations = () => {
-    const locations = new Set<string>();
-    routes.forEach(route => {
-      locations.add(route.from_location);
-      locations.add(route.to_location);
-    });
-    return Array.from(locations).sort();
+    // Use Karnataka locations only
+    return karnatakaLocations;
   };
 
   const calculateEstimate = () => {
@@ -300,79 +366,29 @@ const Booking = () => {
             <Route className="h-8 w-8 text-primary" />
             Book Your Journey
           </h1>
-          <p className="text-muted-foreground">All-India cab booking with real-time distance calculation</p>
+          <p className="text-muted-foreground">Karnataka Outstation Cabs with Intelligent Ride Sharing</p>
         </div>
 
         {/* Popular Routes Section */}
         <PopularRoutes routes={routes} onSelectRoute={handleSelectPopularRoute} />
         
-        {/* Available Shared Rides */}
-        {sharedRides.length > 0 && (
-          <Card className="border-primary/20">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Share2 className="h-5 w-5 text-primary" />
-                    Available Shared Rides
-                  </CardTitle>
-                  <CardDescription>
-                    Join an existing ride and save money!
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSharedRides(!showSharedRides)}
-                >
-                  {showSharedRides ? 'Hide' : 'Show'} ({sharedRides.length})
-                </Button>
-              </div>
-            </CardHeader>
-            {showSharedRides && (
-              <CardContent className="space-y-3">
-                {sharedRides.map((ride) => (
-                  <Card key={ride.id} className="bg-primary/5">
-                    <CardContent className="pt-4">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-2 flex-1">
-                          <div className="flex items-center gap-2">
-                            <Car className="h-4 w-4" />
-                            <span className="font-semibold">{ride.vehicles.name}</span>
-                            <Badge variant="secondary">
-                              {ride.available_seats} seats available
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <div>{ride.pickup_location} → {ride.dropoff_location}</div>
-                            <div>{ride.pickup_date} at {ride.pickup_time}</div>
-                          </div>
-                          <div className="text-lg font-bold text-primary">
-                            ₹{Math.round(ride.fare_per_person * parseInt(formData.passenger_count))}/person
-                          </div>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            setFormData({
-                              ...formData,
-                              join_shared_ride_id: ride.id,
-                              vehicle_id: ride.vehicle_id,
-                              pickup_date: ride.pickup_date,
-                              pickup_time: ride.pickup_time
-                            });
-                            toast.info('Form updated to join this ride');
-                          }}
-                          size="sm"
-                        >
-                          Join Ride
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-            )}
-          </Card>
+        {/* Intelligent Ride Matching */}
+        {formData.pickup_location && formData.dropoff_location && formData.pickup_date && (
+          <IntelligentRideMatching
+            userPickup={formData.pickup_location}
+            userDropoff={formData.dropoff_location}
+            matchedRides={sharedRides}
+            onJoinRide={(rideId, vehicleId, pickupDate, pickupTime) => {
+              setFormData({
+                ...formData,
+                join_shared_ride_id: rideId,
+                vehicle_id: vehicleId,
+                pickup_date: pickupDate,
+                pickup_time: pickupTime
+              });
+            }}
+            passengerCount={parseInt(formData.passenger_count)}
+          />
         )}
 
         <div className="grid lg:grid-cols-3 gap-6">
