@@ -14,11 +14,13 @@ interface PopularRoutesProps {
 }
 
 export const PopularRoutes = ({ routes, onSelectRoute }: PopularRoutesProps) => {
-  // Get most popular routes (longest distances or predefined popular ones)
+  // Filter only Karnataka routes - popular cities in Karnataka
+  const karnatakaPopularCities = ['Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Hampi', 'Coorg', 'Udupi'];
+  
   const popularRoutes = routes
     .filter(route => 
-      route.distance_km > 300 || // Long distance routes
-      ['Bengaluru', 'Mumbai', 'Delhi', 'Chennai'].includes(route.from_location)
+      karnatakaPopularCities.includes(route.from_location) || 
+      karnatakaPopularCities.includes(route.to_location)
     )
     .slice(0, 8);
 
@@ -27,7 +29,7 @@ export const PopularRoutes = ({ routes, onSelectRoute }: PopularRoutesProps) => 
       <CardContent className="pt-6">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-lg">Popular Routes</h3>
+          <h3 className="font-semibold text-lg">Popular Routes in Karnataka</h3>
           <Badge variant="secondary" className="ml-auto">Quick Select</Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

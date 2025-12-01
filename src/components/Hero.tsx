@@ -46,18 +46,18 @@ const Hero = () => {
           <div className="text-center lg:text-left">
             <h1 className="text-5xl lg:text-7xl font-bold text-white mb-6 leading-tight">
               ZoomGo
-              <span className="block text-primary-glow">All India</span>
+              <span className="block text-primary-glow">Karnataka</span>
             </h1>
             <p className="text-xl lg:text-2xl text-white/90 mb-4 leading-relaxed">
               Premium outstation cab service with live tracking
-              and safe rides across all of India
+              and safe rides across Karnataka
             </p>
             
             {/* Popular Cities */}
             <div className="mb-6">
-              <p className="text-white/70 text-sm mb-2">Popular Routes:</p>
+              <p className="text-white/70 text-sm mb-2">Popular Routes in Karnataka:</p>
               <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
-                {['Mumbai', 'Delhi', 'Bengaluru', 'Chennai', 'Hyderabad', 'Pune', 'Kolkata', 'Jaipur'].map((city) => (
+                {['Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Hampi', 'Coorg', 'Udupi'].map((city) => (
                   <span key={city} className="px-3 py-1 bg-white/10 border border-white/20 rounded-full text-white text-sm backdrop-blur-sm">
                     {city}
                   </span>
@@ -175,9 +175,9 @@ const Hero = () => {
 
                 {/* Quick Info */}
                 <div className="text-center text-white/80 text-sm mt-4">
-                  <p>✓ Instant booking • All India coverage</p>
+                  <p>✓ Instant booking • Karnataka coverage</p>
                   <p>✓ 24/7 support • Live GPS tracking</p>
-                  <p>✓ Safe rides • Verified drivers</p>
+                  <p>✓ Safe rides • Captain calls 30 min before pickup</p>
                 </div>
               </div>
             </CardContent>
