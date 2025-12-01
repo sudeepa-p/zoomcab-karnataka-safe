@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PopularRoutes } from "@/components/booking/PopularRoutes";
 import { RouteMap } from "@/components/booking/RouteMap";
 import { CityAutocomplete } from "@/components/booking/CityAutocomplete";
+import { AvailableSharedRides } from "@/components/booking/AvailableSharedRides";
 import { FareComparison } from "@/components/booking/FareComparison";
 import { IntelligentRideMatching } from "@/components/booking/IntelligentRideMatching";
 import { karnatakaLocations } from "@/data/karnatakaLocations";
@@ -45,6 +46,8 @@ interface SharedRide {
   fare_per_person: number;
   estimated_distance: number;
   vehicle_id: string;
+  driver_name?: string;
+  driver_phone?: string;
   vehicles: {
     name: string;
     capacity: number;
@@ -371,6 +374,37 @@ const Booking = () => {
 
         {/* Popular Routes Section */}
         <PopularRoutes routes={routes} onSelectRoute={handleSelectPopularRoute} />
+        
+        {/* Available Shared Rides on Same Route */}
+        {formData.pickup_location && formData.dropoff_location && sharedRides.length > 0 && (
+          <AvailableSharedRides 
+            rides={sharedRides.map(ride => ({
+              id: ride.id,
+              pickup_location: ride.pickup_location,
+              dropoff_location: ride.dropoff_location,
+              pickup_date: ride.pickup_date,
+              pickup_time: ride.pickup_time,
+              available_seats: ride.available_seats,
+              fare_per_person: ride.fare_per_person,
+              driver_name: ride.driver_name,
+              driver_phone: ride.driver_phone,
+              vehicle_name: ride.vehicles.name
+            }))}
+            onJoinRide={(rideId) => {
+              const ride = sharedRides.find(r => r.id === rideId);
+              if (ride) {
+                setFormData({
+                  ...formData,
+                  join_shared_ride_id: rideId,
+                  vehicle_id: ride.vehicle_id,
+                  pickup_date: ride.pickup_date,
+                  pickup_time: ride.pickup_time
+                });
+                toast.success("Joined shared ride!");
+              }
+            }}
+          />
+        )}
         
         {/* Intelligent Ride Matching */}
         {formData.pickup_location && formData.dropoff_location && formData.pickup_date && (

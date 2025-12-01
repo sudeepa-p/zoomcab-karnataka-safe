@@ -62,9 +62,6 @@ const Header = () => {
               <Phone className="h-4 w-4" />
               <span>+91 98765 43210</span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate("/driver/auth")}>
-              Driver Login
-            </Button>
             {user ? (
               <>
                 <Button variant="ghost" onClick={() => navigate('/bookings')}>
@@ -137,16 +134,6 @@ const Header = () => {
                     <Clock className="h-5 w-5 text-secondary" />
                     <span>24/7 Available</span>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    className="w-full" 
-                    onClick={() => {
-                      navigate("/driver/auth");
-                      setIsOpen(false);
-                    }}
-                  >
-                    Driver Login
-                  </Button>
                   {user ? (
                     <>
                       <Button variant="ghost" className="w-full" onClick={() => {
