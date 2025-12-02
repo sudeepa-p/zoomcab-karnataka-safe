@@ -19,6 +19,18 @@ interface BookingRequest {
   join_shared_ride_id?: string;
   payment_method?: string;
   estimated_distance?: number;
+  segment_distance?: number; // Actual km for this passenger's segment
+}
+
+// Helper to get distance between two locations from routes table
+async function getRouteDistance(supabase: any, from: string, to: string): Promise<number | null> {
+  const { data: route } = await supabase
+    .from('routes')
+    .select('distance_km')
+    .or(`and(from_location.eq.${from},to_location.eq.${to}),and(from_location.eq.${to},to_location.eq.${from})`)
+    .single();
+  
+  return route?.distance_km || null;
 }
 
 Deno.serve(async (req) => {
@@ -59,17 +71,6 @@ Deno.serve(async (req) => {
       throw new Error('Vehicle not found');
     }
 
-    // Calculate distance from routes table or use estimate
-    const { data: route } = await supabase
-      .from('routes')
-      .select('distance_km, from_location, to_location')
-      .or(`and(from_location.eq.${bookingData.pickup_location},to_location.eq.${bookingData.dropoff_location}),and(from_location.eq.${bookingData.dropoff_location},to_location.eq.${bookingData.pickup_location})`)
-      .single();
-
-    // Calculate distance from routes table or use provided estimate
-    const distance = bookingData.estimated_distance || route?.distance_km || 100;
-    const fullFare = Number(distance) * Number(vehicle.price_per_km);
-
     // Handle joining an existing shared ride
     if (bookingData.join_shared_ride_id) {
       console.log('Joining shared ride:', bookingData.join_shared_ride_id);
@@ -99,10 +100,33 @@ Deno.serve(async (req) => {
         throw new Error('Not enough seats available');
       }
 
-      // Calculate pro-rated fare based on segment distance
-      let segmentDistance = distance;
+      // Calculate ACTUAL segment distance for this passenger
+      // Priority: 1) provided segment_distance, 2) calculated from routes, 3) provided estimated_distance
+      let segmentDistance = bookingData.segment_distance;
+      
+      if (!segmentDistance) {
+        // Try to get distance from routes table for this passenger's specific segment
+        const routeDistance = await getRouteDistance(
+          supabase, 
+          bookingData.pickup_location, 
+          bookingData.dropoff_location
+        );
+        segmentDistance = routeDistance || bookingData.estimated_distance || 50;
+      }
+
+      console.log('Segment distance for joining passenger:', segmentDistance, 'km');
+      
+      // Calculate fare based on ACTUAL kilometers traveled
       const segmentFare = Number(segmentDistance) * Number(vehicle.price_per_km);
       const farePerPerson = segmentFare / bookingData.passenger_count;
+
+      console.log('Calculated fare for segment:', {
+        segmentDistance,
+        pricePerKm: vehicle.price_per_km,
+        totalSegmentFare: segmentFare,
+        farePerPerson,
+        passengerCount: bookingData.passenger_count
+      });
 
       // Create participant booking
       const { data: participantBooking, error: bookingError } = await supabase
@@ -136,7 +160,7 @@ Deno.serve(async (req) => {
         throw bookingError;
       }
 
-      // Add to shared ride participants
+      // Add to shared ride participants with their segment fare
       const { error: participantError } = await supabase
         .from('shared_ride_participants')
         .insert({
@@ -159,7 +183,7 @@ Deno.serve(async (req) => {
         })
         .eq('id', primaryBooking.id);
 
-      // Create payment record
+      // Create payment record with the segment-based fare
       const { data: payment } = await supabase
         .from('payments')
         .insert({
@@ -172,27 +196,46 @@ Deno.serve(async (req) => {
         .select()
         .single();
 
-      console.log('Joined shared ride successfully:', participantBooking.id);
+      console.log('Joined shared ride successfully:', participantBooking.id, 'Fare:', segmentFare);
 
       return new Response(
         JSON.stringify({ 
           booking: participantBooking, 
           payment,
-          message: 'Successfully joined shared ride',
-          is_shared: true
+          message: `Successfully joined shared ride. You pay ₹${segmentFare.toFixed(0)} for ${segmentDistance} km`,
+          is_shared: true,
+          segment_distance: segmentDistance,
+          segment_fare: segmentFare
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Create a new booking (potentially shared)
+    // Calculate distance from routes table or use estimate
+    const { data: route } = await supabase
+      .from('routes')
+      .select('distance_km')
+      .or(`and(from_location.eq.${bookingData.pickup_location},to_location.eq.${bookingData.dropoff_location}),and(from_location.eq.${bookingData.dropoff_location},to_location.eq.${bookingData.pickup_location})`)
+      .single();
+
+    const distance = bookingData.estimated_distance || route?.distance_km || 100;
+    const fullFare = Number(distance) * Number(vehicle.price_per_km);
+
     const availableSeats = bookingData.is_shared_ride 
       ? vehicle.capacity - bookingData.passenger_count 
       : 0;
 
+    // For shared rides, fare per person is based on vehicle capacity (to incentivize sharing)
+    // For regular rides, fare is total divided by passenger count
     const farePerPerson = bookingData.is_shared_ride 
       ? fullFare / vehicle.capacity 
       : fullFare / bookingData.passenger_count;
+
+    // The creator pays for their seat(s) in the shared ride
+    const creatorFare = bookingData.is_shared_ride 
+      ? farePerPerson * bookingData.passenger_count 
+      : fullFare;
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -208,7 +251,7 @@ Deno.serve(async (req) => {
         passenger_phone: bookingData.passenger_phone,
         special_requests: bookingData.special_requests,
         estimated_distance: distance,
-        estimated_fare: bookingData.is_shared_ride ? farePerPerson * bookingData.passenger_count : fullFare,
+        estimated_fare: creatorFare,
         status: 'confirmed',
         is_shared_ride: bookingData.is_shared_ride || false,
         is_primary_booking: true,
@@ -231,7 +274,7 @@ Deno.serve(async (req) => {
       .insert({
         booking_id: booking.id,
         user_id: user.id,
-        amount: booking.estimated_fare,
+        amount: creatorFare,
         payment_method: bookingData.payment_method || 'cash',
         status: 'pending'
       })
@@ -242,14 +285,14 @@ Deno.serve(async (req) => {
       console.error('Payment creation error:', paymentError);
     }
 
-    console.log('Booking created successfully:', booking.id);
+    console.log('Booking created successfully:', booking.id, 'Fare:', creatorFare);
 
     return new Response(
       JSON.stringify({ 
         booking, 
         payment,
         message: bookingData.is_shared_ride 
-          ? 'Shared ride created successfully' 
+          ? `Shared ride created. You pay ₹${creatorFare.toFixed(0)} for ${distance} km` 
           : 'Booking created successfully',
         is_shared: bookingData.is_shared_ride
       }),
