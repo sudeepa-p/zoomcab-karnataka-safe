@@ -16,10 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { PopularRoutes } from "@/components/booking/PopularRoutes";
 import { RouteMap } from "@/components/booking/RouteMap";
 import { CityAutocomplete } from "@/components/booking/CityAutocomplete";
-import { AvailableSharedRides } from "@/components/booking/AvailableSharedRides";
+import { SameRouteRides } from "@/components/booking/SameRouteRides";
 import { FareComparison } from "@/components/booking/FareComparison";
-import { IntelligentRideMatching } from "@/components/booking/IntelligentRideMatching";
-import { karnatakaLocations } from "@/data/karnatakaLocations";
+import { karnatakaLocations, karnatakaRouteClusters } from "@/data/karnatakaLocations";
 
 interface Vehicle {
   id: string;
@@ -232,28 +231,13 @@ const Booking = () => {
   };
 
   const isPointOnRoute = (userPickup: string, userDrop: string, ridePickup: string, rideDrop: string) => {
-    // Intelligent route matching for Karnataka locations
-    // Check if user's journey is part of the ride's main route
-    
-    // Example: Ride from Bengaluru to Hubballi, user wants Bengaluru to Dharwad
-    // Dharwad is on the way to Hubballi
-    const commonRouteClusters = [
-      ['Bengaluru', 'Tumakuru', 'Chitradurga', 'Davangere', 'Hubballi', 'Dharwad'],
-      ['Bengaluru', 'Mysuru', 'Chamarajanagar', 'Gundlupet'],
-      ['Bengaluru', 'Hassan', 'Shivamogga', 'Shimoga'],
-      ['Mysuru', 'Hassan', 'Mangaluru', 'Udupi'],
-      ['Hubballi', 'Gadag', 'Bagalkot', 'Bijapur', 'Vijayapura'],
-      ['Bengaluru', 'Kolar', 'Mulbagal', 'Anantapur'],
-    ];
-
-    // Check if all four points are in a common route cluster
-    for (const cluster of commonRouteClusters) {
+    // Use Karnataka route clusters for intelligent matching
+    for (const cluster of karnatakaRouteClusters) {
       const allInCluster = [ridePickup, rideDrop, userPickup, userDrop].every(loc =>
         cluster.some(city => loc.toLowerCase().includes(city.toLowerCase()))
       );
       
       if (allInCluster) {
-        // Check if user's segment is within the ride's segment
         const ridePickupIndex = cluster.findIndex(c => ridePickup.toLowerCase().includes(c.toLowerCase()));
         const rideDropIndex = cluster.findIndex(c => rideDrop.toLowerCase().includes(c.toLowerCase()));
         const userPickupIndex = cluster.findIndex(c => userPickup.toLowerCase().includes(c.toLowerCase()));
@@ -261,13 +245,11 @@ const Booking = () => {
 
         if (ridePickupIndex !== -1 && rideDropIndex !== -1 && 
             userPickupIndex !== -1 && userDropIndex !== -1) {
-          // User's route should be within ride's route
           return (userPickupIndex >= Math.min(ridePickupIndex, rideDropIndex) &&
                   userDropIndex <= Math.max(ridePickupIndex, rideDropIndex));
         }
       }
     }
-
     return false;
   };
 
@@ -375,9 +357,9 @@ const Booking = () => {
         {/* Popular Routes Section */}
         <PopularRoutes routes={routes} onSelectRoute={handleSelectPopularRoute} />
         
-        {/* Available Shared Rides on Same Route */}
+        {/* Available Shared Rides on Same Route - Separate Section */}
         {formData.pickup_location && formData.dropoff_location && sharedRides.length > 0 && (
-          <AvailableSharedRides 
+          <SameRouteRides 
             rides={sharedRides.map(ride => ({
               id: ride.id,
               pickup_location: ride.pickup_location,
@@ -388,7 +370,8 @@ const Booking = () => {
               fare_per_person: ride.fare_per_person,
               driver_name: ride.driver_name,
               driver_phone: ride.driver_phone,
-              vehicle_name: ride.vehicles.name
+              vehicle_name: ride.vehicles.name,
+              matchType: ride.isExactMatch ? 'exact' : 'on_the_way'
             }))}
             onJoinRide={(rideId) => {
               const ride = sharedRides.find(r => r.id === rideId);
@@ -400,28 +383,11 @@ const Booking = () => {
                   pickup_date: ride.pickup_date,
                   pickup_time: ride.pickup_time
                 });
-                toast.success("Joined shared ride!");
+                toast.success("Joined shared ride! Captain will call you 30 min before pickup.");
               }
             }}
-          />
-        )}
-        
-        {/* Intelligent Ride Matching */}
-        {formData.pickup_location && formData.dropoff_location && formData.pickup_date && (
-          <IntelligentRideMatching
             userPickup={formData.pickup_location}
             userDropoff={formData.dropoff_location}
-            matchedRides={sharedRides}
-            onJoinRide={(rideId, vehicleId, pickupDate, pickupTime) => {
-              setFormData({
-                ...formData,
-                join_shared_ride_id: rideId,
-                vehicle_id: vehicleId,
-                pickup_date: pickupDate,
-                pickup_time: pickupTime
-              });
-            }}
-            passengerCount={parseInt(formData.passenger_count)}
           />
         )}
 

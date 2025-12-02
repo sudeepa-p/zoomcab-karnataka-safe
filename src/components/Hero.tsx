@@ -53,15 +53,18 @@ const Hero = () => {
               and safe rides across Karnataka
             </p>
             
-            {/* Popular Cities */}
+            {/* All Karnataka Districts */}
             <div className="mb-6">
-              <p className="text-white/70 text-sm mb-2">Popular Routes in Karnataka:</p>
-              <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
-                {['Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Hampi', 'Coorg', 'Udupi'].map((city) => (
+              <p className="text-white/70 text-sm mb-2">Serving All 31 Districts of Karnataka:</p>
+              <div className="flex flex-wrap gap-2 justify-center lg:justify-start max-h-24 overflow-hidden">
+                {['Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Ballari', 'Kalaburagi', 'Davangere', 'Shivamogga', 'Tumakuru', 'Udupi', 'Hassan', 'Madikeri'].map((city) => (
                   <span key={city} className="px-3 py-1 bg-white/10 border border-white/20 rounded-full text-white text-sm backdrop-blur-sm">
                     {city}
                   </span>
                 ))}
+                <span className="px-3 py-1 bg-primary/30 border border-primary/50 rounded-full text-white text-sm backdrop-blur-sm font-semibold">
+                  +200 more locations
+                </span>
               </div>
             </div>
             
