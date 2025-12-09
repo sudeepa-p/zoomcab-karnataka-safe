@@ -42,7 +42,8 @@ export const SameRouteRides = ({ rides, onJoinRide, userPickup, userDropoff }: S
           <CardTitle className="text-xl">Available Rides on Your Route</CardTitle>
         </div>
         <CardDescription>
-          Found {rides.length} shared ride(s) from {userPickup} to {userDropoff}. Join to save up to 60%!
+          Found {rides.length} shared ride(s) from {userPickup} to {userDropoff}. 
+          <Badge className="ml-2 bg-green-600 text-white">30% OFF</Badge> for all shared rides!
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -108,10 +109,13 @@ export const SameRouteRides = ({ rides, onJoinRide, userPickup, userDropoff }: S
                     </div>
                     
                     <div className="text-right space-y-2">
-                      <div className="text-2xl font-bold text-primary">
+                      <div className="text-xs text-muted-foreground line-through">
+                        ₹{Math.round(ride.fare_per_person / 0.7)}
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
                         ₹{Math.round(ride.fare_per_person)}
                       </div>
-                      <div className="text-xs text-muted-foreground">per person</div>
+                      <div className="text-xs text-green-600 font-medium">30% OFF · per person</div>
                       <Button onClick={() => onJoinRide(ride.id)} size="sm" className="w-full">
                         Join This Ride
                       </Button>
@@ -189,10 +193,13 @@ export const SameRouteRides = ({ rides, onJoinRide, userPickup, userDropoff }: S
                     </div>
                     
                     <div className="text-right space-y-2">
-                      <div className="text-2xl font-bold text-primary">
+                      <div className="text-xs text-muted-foreground line-through">
+                        ₹{Math.round(ride.fare_per_person / 0.7)}
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
                         ₹{Math.round(ride.fare_per_person)}
                       </div>
-                      <div className="text-xs text-muted-foreground">per person</div>
+                      <div className="text-xs text-green-600 font-medium">30% OFF · per person</div>
                       <Button onClick={() => onJoinRide(ride.id)} size="sm" variant="secondary" className="w-full">
                         Join This Ride
                       </Button>
