@@ -72,6 +72,9 @@ Deno.serve(async (req) => {
     }
 
     // Handle joining an existing shared ride
+    // SHARED RIDE DISCOUNT - 30% off for all shared ride passengers
+    const SHARED_RIDE_DISCOUNT = 0.30; // 30% discount
+
     if (bookingData.join_shared_ride_id) {
       console.log('Joining shared ride:', bookingData.join_shared_ride_id);
 
@@ -116,14 +119,18 @@ Deno.serve(async (req) => {
 
       console.log('Segment distance for joining passenger:', segmentDistance, 'km');
       
-      // Calculate fare based on ACTUAL kilometers traveled
-      const segmentFare = Number(segmentDistance) * Number(vehicle.price_per_km);
+      // Calculate fare based on ACTUAL kilometers traveled with 30% SHARED RIDE DISCOUNT
+      const baseFare = Number(segmentDistance) * Number(vehicle.price_per_km);
+      const discountAmount = baseFare * SHARED_RIDE_DISCOUNT;
+      const segmentFare = baseFare - discountAmount;
       const farePerPerson = segmentFare / bookingData.passenger_count;
 
-      console.log('Calculated fare for segment:', {
+      console.log('Calculated fare with 30% shared ride discount:', {
         segmentDistance,
         pricePerKm: vehicle.price_per_km,
-        totalSegmentFare: segmentFare,
+        baseFare,
+        discountAmount,
+        discountedFare: segmentFare,
         farePerPerson,
         passengerCount: bookingData.passenger_count
       });
@@ -220,22 +227,38 @@ Deno.serve(async (req) => {
       .single();
 
     const distance = bookingData.estimated_distance || route?.distance_km || 100;
-    const fullFare = Number(distance) * Number(vehicle.price_per_km);
+    const baseFare = Number(distance) * Number(vehicle.price_per_km);
 
     const availableSeats = bookingData.is_shared_ride 
       ? vehicle.capacity - bookingData.passenger_count 
       : 0;
 
-    // For shared rides, fare per person is based on vehicle capacity (to incentivize sharing)
-    // For regular rides, fare is total divided by passenger count
-    const farePerPerson = bookingData.is_shared_ride 
-      ? fullFare / vehicle.capacity 
-      : fullFare / bookingData.passenger_count;
+    // SHARED RIDE: 30% discount for all passengers
+    // REGULAR RIDE: Full fare
+    let farePerPerson: number;
+    let creatorFare: number;
+    let discountApplied = 0;
 
-    // The creator pays for their seat(s) in the shared ride
-    const creatorFare = bookingData.is_shared_ride 
-      ? farePerPerson * bookingData.passenger_count 
-      : fullFare;
+    if (bookingData.is_shared_ride) {
+      // Apply 30% discount for shared rides
+      const discountedTotalFare = baseFare * (1 - SHARED_RIDE_DISCOUNT);
+      discountApplied = baseFare * SHARED_RIDE_DISCOUNT;
+      farePerPerson = discountedTotalFare / vehicle.capacity;
+      creatorFare = farePerPerson * bookingData.passenger_count;
+      
+      console.log('Shared ride fare calculation:', {
+        distance,
+        baseFare,
+        discountApplied,
+        discountedTotalFare,
+        farePerPerson,
+        creatorFare
+      });
+    } else {
+      // Regular ride - full fare
+      farePerPerson = baseFare / bookingData.passenger_count;
+      creatorFare = baseFare;
+    }
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')

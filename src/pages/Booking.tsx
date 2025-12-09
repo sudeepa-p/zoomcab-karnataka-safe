@@ -258,6 +258,8 @@ const Booking = () => {
     return karnatakaLocations;
   };
 
+  const SHARED_RIDE_DISCOUNT = 0.30; // 30% discount for all shared rides
+
   const calculateEstimate = () => {
     if (!formData.pickup_location || !formData.dropoff_location || !formData.vehicle_id) {
       return null;
@@ -276,8 +278,10 @@ const Booking = () => {
       
       let fare = fullFare;
       if (formData.is_shared_ride) {
-        // Estimate based on vehicle capacity sharing
-        fare = (fullFare / vehicle.capacity) * passengerCount;
+        // Apply 30% discount for shared rides, then calculate per-seat cost
+        const discountedFare = fullFare * (1 - SHARED_RIDE_DISCOUNT);
+        const farePerSeat = discountedFare / vehicle.capacity;
+        fare = farePerSeat * passengerCount;
       }
       
       return { distance, fare, fullFare };
