@@ -18,7 +18,8 @@ import { RouteMap } from "@/components/booking/RouteMap";
 import { CityAutocomplete } from "@/components/booking/CityAutocomplete";
 import { SameRouteRides } from "@/components/booking/SameRouteRides";
 import { FareComparison } from "@/components/booking/FareComparison";
-import { karnatakaLocations, karnatakaRouteClusters } from "@/data/karnatakaLocations";
+import { SharedFareBreakdown } from "@/components/booking/SharedFareBreakdown";
+import { karnatakaLocations, karnatakaRouteClusters, getDistanceEstimate } from "@/data/karnatakaLocations";
 
 interface Vehicle {
   id: string;
@@ -364,19 +365,24 @@ const Booking = () => {
         {/* Available Shared Rides on Same Route - Separate Section */}
         {formData.pickup_location && formData.dropoff_location && sharedRides.length > 0 && (
           <SameRouteRides 
-            rides={sharedRides.map(ride => ({
-              id: ride.id,
-              pickup_location: ride.pickup_location,
-              dropoff_location: ride.dropoff_location,
-              pickup_date: ride.pickup_date,
-              pickup_time: ride.pickup_time,
-              available_seats: ride.available_seats,
-              fare_per_person: ride.fare_per_person,
-              driver_name: ride.driver_name,
-              driver_phone: ride.driver_phone,
-              vehicle_name: ride.vehicles.name,
-              matchType: ride.isExactMatch ? 'exact' : 'on_the_way'
-            }))}
+            rides={sharedRides.map(ride => {
+              const vehicle = vehicles.find(v => v.id === ride.vehicle_id);
+              return {
+                id: ride.id,
+                pickup_location: ride.pickup_location,
+                dropoff_location: ride.dropoff_location,
+                pickup_date: ride.pickup_date,
+                pickup_time: ride.pickup_time,
+                available_seats: ride.available_seats,
+                fare_per_person: ride.fare_per_person,
+                estimated_distance: ride.estimated_distance,
+                driver_name: ride.driver_name,
+                driver_phone: ride.driver_phone,
+                vehicle_name: ride.vehicles.name,
+                price_per_km: vehicle?.price_per_km || 14,
+                matchType: ride.isExactMatch ? 'exact' : 'on_the_way'
+              };
+            })}
             onJoinRide={(rideId) => {
               const ride = sharedRides.find(r => r.id === rideId);
               if (ride) {
