@@ -20,6 +20,8 @@ interface BookingRequest {
   payment_method?: string;
   estimated_distance?: number;
   segment_distance?: number; // Actual km for this passenger's segment
+  transaction_id?: string; // Mock transaction ID from payment
+  payment_status?: string; // Payment status from frontend
 }
 
 // Helper to get distance between two locations from routes table
@@ -190,6 +192,11 @@ Deno.serve(async (req) => {
         })
         .eq('id', primaryBooking.id);
 
+      // Determine payment status based on method
+      const paymentStatus = bookingData.payment_method === 'cash' 
+        ? 'pending' 
+        : (bookingData.payment_status || 'pending');
+
       // Create payment record with the segment-based fare
       const { data: payment } = await supabase
         .from('payments')
@@ -198,7 +205,8 @@ Deno.serve(async (req) => {
           user_id: user.id,
           amount: segmentFare,
           payment_method: bookingData.payment_method || 'cash',
-          status: 'pending'
+          status: paymentStatus,
+          stripe_payment_id: bookingData.transaction_id || null
         })
         .select()
         .single();
@@ -291,6 +299,11 @@ Deno.serve(async (req) => {
       throw bookingError;
     }
 
+    // Determine payment status based on method
+    const paymentStatus = bookingData.payment_method === 'cash' 
+      ? 'pending' 
+      : (bookingData.payment_status || 'pending');
+
     // Create payment record
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
@@ -299,7 +312,8 @@ Deno.serve(async (req) => {
         user_id: user.id,
         amount: creatorFare,
         payment_method: bookingData.payment_method || 'cash',
-        status: 'pending'
+        status: paymentStatus,
+        stripe_payment_id: bookingData.transaction_id || null
       })
       .select()
       .single();

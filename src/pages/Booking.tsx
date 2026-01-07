@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { Calendar, Clock, Users, Phone, User, Share2, Car, Route, Smartphone, Banknote, CreditCard, Loader2 } from "lucide-react";
+import { Calendar, Clock, Users, Phone, User, Share2, Car, Route, Smartphone, Banknote, CreditCard, Loader2, Wallet } from "lucide-react";
+import { PaymentModal } from "@/components/payment/PaymentModal";
 import { Badge } from "@/components/ui/badge";
 import { PopularRoutes } from "@/components/booking/PopularRoutes";
 import { RouteMap } from "@/components/booking/RouteMap";
@@ -68,6 +69,8 @@ const Booking = () => {
   const [sharedRides, setSharedRides] = useState<SharedRide[]>([]);
   const [showSharedRides, setShowSharedRides] = useState(false);
   const [calculatedDistance, setCalculatedDistance] = useState<number | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingBookingData, setPendingBookingData] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     pickup_location: "",
@@ -304,16 +307,46 @@ const Booking = () => {
       return;
     }
 
+    // For cash payment, proceed directly without modal
+    // For UPI/Card payments, show payment modal
+    if (formData.payment_method === "cash") {
+      await processBooking();
+    } else if (formData.payment_method === "debit_card" || 
+               formData.payment_method === "phone_pay" || 
+               formData.payment_method === "google_pay" || 
+               formData.payment_method === "upi") {
+      // Store booking data and show payment modal
+      setPendingBookingData({
+        ...formData,
+        passenger_count: parseInt(formData.passenger_count) || 1,
+        estimated_distance: calculatedDistance
+      });
+      setShowPaymentModal(true);
+    } else {
+      // Default to direct booking for any other method
+      await processBooking();
+    }
+  };
+
+  const processBooking = async (transactionId?: string, paymentStatus?: "success" | "pending") => {
     setLoading(true);
     try {
+      const bookingPayload = pendingBookingData || {
+        ...formData,
+        passenger_count: parseInt(formData.passenger_count) || 1,
+        estimated_distance: calculatedDistance
+      };
+
+      // Add transaction info if provided
+      if (transactionId) {
+        bookingPayload.transaction_id = transactionId;
+        bookingPayload.payment_status = paymentStatus === "success" ? "completed" : "pending";
+      }
+
       const { data, error } = await supabase.functions.invoke('create-booking', {
-        body: {
-          ...formData,
-          passenger_count: parseInt(formData.passenger_count) || 1,
-          estimated_distance: calculatedDistance
-        },
+        body: bookingPayload,
         headers: {
-          Authorization: `Bearer ${session.access_token}`
+          Authorization: `Bearer ${session?.access_token}`
         }
       });
 
@@ -332,7 +365,13 @@ const Booking = () => {
       toast.error(error.message || 'Failed to create booking');
     } finally {
       setLoading(false);
+      setPendingBookingData(null);
     }
+  };
+
+  const handlePaymentComplete = async (transactionId: string, status: "success" | "pending") => {
+    setShowPaymentModal(false);
+    await processBooking(transactionId, status);
   };
 
   const locations = getUniqueLocations();
@@ -627,12 +666,23 @@ const Booking = () => {
                       <Label htmlFor="cash" className="flex items-center gap-2 cursor-pointer flex-1">
                         <Banknote className="h-5 w-5 text-green-600" />
                         <div>
-                          <p className="font-medium">Cash</p>
-                          <p className="text-sm text-muted-foreground">Pay the driver directly</p>
+                          <p className="font-medium">Cash on Ride</p>
+                          <p className="text-sm text-muted-foreground">Pay driver after ride completion</p>
                         </div>
                       </Label>
                     </div>
                     
+                    <div className="flex items-center space-x-3 border rounded-lg p-4 hover:bg-accent cursor-pointer transition-colors">
+                      <RadioGroupItem value="upi" id="upi" />
+                      <Label htmlFor="upi" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Wallet className="h-5 w-5 text-orange-600" />
+                        <div>
+                          <p className="font-medium">UPI Payment</p>
+                          <p className="text-sm text-muted-foreground">Pay via any UPI app (PhonePe, GPay, etc.)</p>
+                        </div>
+                      </Label>
+                    </div>
+
                     <div className="flex items-center space-x-3 border rounded-lg p-4 hover:bg-accent cursor-pointer transition-colors">
                       <RadioGroupItem value="phone_pay" id="phone_pay" />
                       <Label htmlFor="phone_pay" className="flex items-center gap-2 cursor-pointer flex-1">
@@ -656,12 +706,12 @@ const Booking = () => {
                     </div>
 
                     <div className="flex items-center space-x-3 border rounded-lg p-4 hover:bg-accent cursor-pointer transition-colors">
-                      <RadioGroupItem value="upi" id="upi" />
-                      <Label htmlFor="upi" className="flex items-center gap-2 cursor-pointer flex-1">
-                        <CreditCard className="h-5 w-5 text-orange-600" />
+                      <RadioGroupItem value="debit_card" id="debit_card" />
+                      <Label htmlFor="debit_card" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <CreditCard className="h-5 w-5 text-indigo-600" />
                         <div>
-                          <p className="font-medium">UPI</p>
-                          <p className="text-sm text-muted-foreground">Pay via any UPI app</p>
+                          <p className="font-medium">Debit Card</p>
+                          <p className="text-sm text-muted-foreground">Pay using your debit card</p>
                         </div>
                       </Label>
                     </div>
@@ -685,6 +735,19 @@ const Booking = () => {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setPendingBookingData(null);
+        }}
+        onPaymentComplete={handlePaymentComplete}
+        paymentMethod={formData.payment_method}
+        amount={estimate?.fare || 0}
+        passengerName={formData.passenger_name}
+      />
     </div>
   );
 };
